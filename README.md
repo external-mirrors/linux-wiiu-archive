@@ -1,0 +1,37 @@
+# Wii U Linux
+**A port of Linux 4.11.6 to the Wii U baremetal.**
+
+### Compiling
+Assuming you have devkitPPC (though any PowerPC compiler will work:)
+```sh
+#clone repo however you'd like
+cp arch/powerpc/configs/wiiu_defconfig .config
+#you don't need to make any changes, just enter and exit to generate the config
+make menuconfig ARCH=powerpc CROSS_COMPILE=powerpc-eabi- CROSS32_COMPILE=powerpc-eabi-
+#add -j4 if you'd like
+make ARCH=powerpc CROSS_COMPILE=powerpc-eabi- CROSS32_COMPILE=powerpc-eabi-
+```
+This'll build `arch/powerpc/boot/dtbImage.wiiu`. From here, check on [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) for your next steps.
+
+### Booting
+The kernel commandline is hardcoded (for now) with `root=sda1 rootwait`. This means you'll need to use a USB flash drive as your rootfs. Format it however you'd like (yes, ext4/gpt works) and throw a distro on it. Plug it and a USB keyboard into the Wii U. Run [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) (as described in that repo's README) and enjoy your Linux!
+
+*TODO: pick a distro to support, get SD card booting user-accessible*
+
+### Device Support
+As it stands, we've got:
+ - USB OHCI/EHCI (back ports only)
+ - Framebuffer graphics (no acceleration or DRI)
+ - SD card
+ - Bluetooth (tether a phone to get internet)
+ - Some ARM interaction (for poweroff/reboot)
+ - 2GB of RAM (0x80000000, reclaimed from ARM)
+ - One PowerPC core (core 0?)
+ - Both interrupt controllers (this is a big deal for us)
+
+*TODO: a todo list*
+
+### Distributions and Programs
+While we started off developing with Gentoo, we swapped to Debian unstable (everything's precompiled) so that's what we reccomend you do too. Debain stable/testing is unbearably outdated on PowerPC so yes, you should use sid/unstable. You can make a working system with `debootstrap` (don't forget to change the root password) - we're working on making this process easier.
+
+No, we haven't tried X.org. It might work with `xf86-video-fbdev`, albeit *slowly*.
