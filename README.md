@@ -1,6 +1,8 @@
 # Wii U Linux
 **A port of Linux 4.11.6 to the Wii U baremetal.**
 
+[![pipeline status](https://gitlab.com/linux-wiiu/linux-wiiu/badges/master/pipeline.svg)](https://gitlab.com/linux-wiiu/linux-wiiu/commits/master)
+
 ### Compiling
 Assuming you have devkitPPC (though any PowerPC compiler will work:)
 ```sh
@@ -12,6 +14,8 @@ make menuconfig ARCH=powerpc CROSS_COMPILE=powerpc-eabi- CROSS32_COMPILE=powerpc
 make ARCH=powerpc CROSS_COMPILE=powerpc-eabi- CROSS32_COMPILE=powerpc-eabi-
 ```
 This'll build `arch/powerpc/boot/dtbImage.wiiu`. From here, check on [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) for your next steps.
+
+You can also download a precompiled dtbImage of the latest git [here](https://gitlab.com/linux-wiiu/linux-wiiu/-/jobs/artifacts/master/raw/dtbImage.wiiu?job=master-build).
 
 ### Booting
 The kernel commandline is hardcoded (for now) with `root=sda1 rootwait`. This means you'll need to use a USB flash drive as your rootfs. Format it however you'd like (yes, ext4/gpt works) and throw a distro on it. Plug it and a USB keyboard into the Wii U. Run [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) (as described in that repo's README) and enjoy your Linux!
