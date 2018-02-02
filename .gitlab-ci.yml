@@ -30,6 +30,7 @@ master-build:
 master-deploy-deb:
   stage: deploy
   image: ubuntu:14.04
+  allow_failure: true
   only:
   - master@linux-wiiu/linux-wiiu
   before_script:
