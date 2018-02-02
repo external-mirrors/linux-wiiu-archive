@@ -50,7 +50,7 @@ master-deploy-deb:
   - cp debian-wiiu-repo/debian/* debian-pkg-temp/DEBIAN/
   - chmod 0555 debian-pkg-temp/DEBIAN/*
   - mkdir -p debian-pkg-temp/$(dirname $(cat debian-wiiu-repo/debian/where))
-  - cp COPYING debian-pkg-temp/$(cat debian-wiiu-repo/debian/where)
+  - cp dtbImage.wiiu debian-pkg-temp/$(cat debian-wiiu-repo/debian/where)
   - sed -i 's/{PACK}/linux-wiiu-git/g' debian-pkg-temp/DEBIAN/control
   - sed -i s/\{VER\}/${PKG_VER}/g debian-pkg-temp/DEBIAN/control
   - echo Packaging ${PKG_VER} \(${CI_COMMIT_SHA}\)
