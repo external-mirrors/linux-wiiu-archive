@@ -34,7 +34,7 @@ As it stands, we've got:
 Some of our TODOs can be found on [the boards](https://gitlab.com/linux-wiiu/linux-wiiu/boards).
 
 ### Distributions and Programs
-While we started off developing with Gentoo, we swapped to Debian unstable (everything's precompiled) so that's what we reccomend you do too. Debain stable/testing is unbearably outdated on PowerPC so yes, you should use sid/unstable. To make a system, you can use debootstrap or our prebuilt option:
+While we started off developing with Gentoo, we swapped to Debian unstable (everything's precompiled) so that's what we recommend you do too. Debain stable/testing is unbearably outdated on PowerPC so yes, you should use sid/unstable. To make a system, you can use debootstrap or our prebuilt option:
 
 1. Be on Linux. Get a USB (512mb bare minimum) and format it with a single ext4 partition. This will be your rootfs, so make sure it's a decent quality one (speed is important)
 2. Download [this archive](https://mega.nz/#!la52GDSS!Y9TnuFmvbWRbFZww7LPvVsyh2egz4CTDyxC2R5r62r4), we'll call it "debian.tar.xz"
