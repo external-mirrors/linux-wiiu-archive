@@ -13,7 +13,7 @@ make menuconfig ARCH=powerpc CROSS_COMPILE=powerpc-eabi- CROSS32_COMPILE=powerpc
 #add -j4 if you'd like
 make ARCH=powerpc CROSS_COMPILE=powerpc-eabi- CROSS32_COMPILE=powerpc-eabi-
 ```
-This'll build `arch/powerpc/boot/dtbImage.wiiu`. From here, check on [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) for your next steps.
+This'll build `arch/powerpc/boot/dtbImage.wiiu`. From here, check on [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) for your next steps. There are no kernel modules to worry about, unless you build your own.
 
 You can also download a precompiled dtbImage of the latest git [here](https://gitlab.com/linux-wiiu/linux-wiiu/-/jobs/artifacts/master/raw/dtbImage.wiiu?job=master-build).
 
@@ -33,9 +33,18 @@ As it stands, we've got:
  - One PowerPC core (core 0?)
  - Both interrupt controllers (this is a big deal for us)
 
-*TODO: a todo list*
+Some of our TODOs can be found on [the boards](https://gitlab.com/linux-wiiu/linux-wiiu/boards).
 
 ### Distributions and Programs
-While we started off developing with Gentoo, we swapped to Debian unstable (everything's precompiled) so that's what we reccomend you do too. Debain stable/testing is unbearably outdated on PowerPC so yes, you should use sid/unstable. You can make a working system with `debootstrap` (don't forget to change the root password) - we're working on making this process easier.
+While we started off developing with Gentoo, we swapped to Debian unstable (everything's precompiled) so that's what we reccomend you do too. Debain stable/testing is unbearably outdated on PowerPC so yes, you should use sid/unstable. To make a system, you can use debootstrap or our prebuilt option:
 
-No, we haven't tried X.org. It might work with `xf86-video-fbdev`, albeit *slowly*.
+1. Be on Linux. Get a USB (512mb bare minimum) and format it with a single ext4 partition. This will be your rootfs, so make sure it's a decent quality one (speed is important)
+2. Download [this archive](https://mega.nz/#!la52GDSS!Y9TnuFmvbWRbFZww7LPvVsyh2egz4CTDyxC2R5r62r4), we'll call it "debian.tar.xz"
+3. Mount and cd into your new USB.
+4. Run `tar -xvpf <path/to/debian.tar.xz>`. The p is important, you could skip the v.
+5. Eject the drive and plug it into your Wii U. With any luck, it'll boot Debian! Log in with username root and password root.
+
+##### Notes
+ - This version of Debian is set up to keep the kernel up to date - it'll mount the SD whenever it does this. Remove `deb.heyquark.com` from the apt sources to disable this.
+ - No, we haven't tried X.org. It might work with `xf86-video-fbdev`, albeit *slowly*.
+ - If you can come up with a better guide (esp. one including steps for Windows users) feel free to PR it in.
