@@ -21,8 +21,10 @@ docker run --rm -it -v $(pwd):/linux-wiiu quarktheawesome/linux-wiiu-builder
 #Configure Linux - the needed make flags are in $LINUXMK to save typing
 make wiiu_defconfig $LINUXMK
 make -j4 $LINUXMK
+#We're done! Exit the container and get back to the host OS
+exit
 ```
-Once this completes, you should find dtbImage.wiiu under `$(pwd)/output`. The README at [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) details how to run this file.
+Once this completes, you should find dtbImage.wiiu at `arch/powerpc/boot/dtbImage.wiiu`. Check out [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) to get this running on your Wii U.
 
 ##### Compiling (from scratch - not recommended)
 You'll need a PowerPC toolchain. It seems devkitPPC *will not* work. Assuming your chain is `powerpc-linux-gnu-`:
