@@ -8,10 +8,19 @@
 You can download a prebuilt image [here](https://gitlab.com/linux-wiiu/linux-wiiu/-/jobs/artifacts/master/raw/dtbImage.wiiu?job=master-build). See [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) for your next steps on setting it up.
 
 ##### Compiling (Docker)
-If you're the type to compile things yourself, you can use our Docker image to sort everything out for you. (Quick warning: the image is ~850MiB)
+If you're the type to compile things yourself, you can use our Docker image to sort everything out for you. (Quick warning: the image is ~250MiB on disk)
 ```sh
-mkdir -p output
-docker run --rm -it -v $(pwd)/output:/output quarktheawesome/linux-wiiu-builder
+#Download linux-wiiu
+git clone https://gitlab.com/linux-wiiu/linux-wiiu #or however you want to do that
+cd linux-wiiu
+#run the docker container
+#--rm (clean up after us); -it (use a terminal)
+#-v $(pwd):/linux-wiiu (mount the current directory as /linux-wiiu)
+docker run --rm -it -v $(pwd):/linux-wiiu quarktheawesome/linux-wiiu-builder
+#You should now be in the container - your shell prompt will change
+#Configure Linux - the needed make flags are in $LINUXMK to save typing
+make wiiu_defconfig $LINUXMK
+make -j4 $LINUXMK
 ```
 Once this completes, you should find dtbImage.wiiu under `$(pwd)/output`. The README at [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) details how to run this file.
 
