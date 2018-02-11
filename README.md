@@ -5,7 +5,7 @@
 
 ### Getting Linux
 ##### Prebuilt Download
-You can download a prebuilt image [here](https://gitlab.com/linux-wiiu/linux-wiiu/-/jobs/artifacts/master/raw/dtbImage.wiiu?job=master-build). See [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) for your next steps on setting it up.
+You can download a prebuilt image [here](https://gitlab.com/linux-wiiu/linux-wiiu/-/jobs/artifacts/master/raw/dtbImage.wiiu?job=linux-build). See [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) for your next steps on setting it up.
 
 ##### Compiling (Docker)
 If you're the type to compile things yourself, you can use our Docker image to sort everything out for you. (Quick warning: the image is ~250MiB on disk)
