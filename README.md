@@ -18,6 +18,7 @@ cd linux-wiiu
 #-v $(pwd):/linux-wiiu (mount the current directory as /linux-wiiu)
 docker run --rm -it -v $(pwd):/linux-wiiu quarktheawesome/linux-wiiu-builder
 #You should now be in the container - your shell prompt will change
+cd linux-wiiu
 #Configure Linux - the needed make flags are in $LINUXMK to save typing
 make wiiu_defconfig $LINUXMK
 make -j4 $LINUXMK
