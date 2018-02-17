@@ -76,14 +76,6 @@
 				  0x0d010000 0x0d010000 0x00190000		/* Latte devices registers */
 				  0x0d800000 0x0d800000 0x00800000>;	/* Latte registers */
 
-		/* MEMLESS DEVICES */
-
-		pwrbutton: pwrbutton {
-  			compatible = "nintendo,wiiu-pwrbutton";
-  			interrupt-parent = <&pic1>;
-  			interrupts = <30>;
-  		};
-
 		/* ESPRESSO DEVICES (0x0c000000) */
 
 		gx2: gx2@0c200000 {
@@ -106,6 +98,44 @@
 			interrupt-controller;
 			interrupt-parent = <&pic0>;
 			interrupts = <24>;
+		};
+		
+		gpio1: gpio@0x0d8000c0 {
+			#gpio-cells = <2>;
+			#interrupt-cells = <1>;
+			compatible = "nintendo,latte-gpio";
+			reg = <0x0d8000c0 0x1c>;
+			gpio-controller;
+			interrupt-controller;
+			interrupt-parent = <&pic1>;
+			interrupts = <11>;
+			
+			pwrbutton {
+				gpio-hog;
+				gpios = <0 0>;
+				input;
+				line-name = "pwrbutton";
+			};
+			
+			wifimode {
+				gpio-hog;
+				gpios = <29 0>;
+				/* TODO: does this need to be low? */
+				output-high;
+				line-name = "wifimode";
+			};
+		};
+		
+		gpio_keys {
+			compatible = "gpio-keys";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			button@0 {
+				label = "GPIO Power Button";
+				linux,code = <116>;
+				interrupt-parent = <&gpio1>;
+				interrupts = <0>;
+			};
 		};
 
 		usb@0d040000 {

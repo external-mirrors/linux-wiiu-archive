@@ -1,3 +1,19 @@
+/*
+ * drivers/video/fbdev/wiiufb_regs.h
+ *
+ * Framebuffer registers for Nintendo Wii U GPU
+ * Copyright (C) 2018 Ash Logan <quarktheawesome@gmail.com>
+ * Copyright (C) 2018 Roberto Van Eeden <rwrr0644@gmail.com>
+ *
+ * Based on AMD RV630 Reference Guide
+ * Copyright (C) 2007 Advanced Micro Devices, Inc.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ */
 
 #define readreg(addr) ioread32be(drvdata->regs + addr)
 #define writereg(addr, val) iowrite32be(val, drvdata->regs + addr)

@@ -2,6 +2,12 @@
  * arch/powerpc/platforms/embedded6xx/wiiu/latte-ahball-pic.c
  *
  * Nintendo Wii U "Latte" interrupt controller support.
+ * Copyright (C) 2018 Ash Logan <quarktheawesome@gmail.com>
+ * Copyright (C) 2018 Roberto Van Eeden <rwrr0644@gmail.com>
+ *
+ * Based on hlwd-pic.c
+ * Copyright (C) 2009 The GameCube Linux Team
+ * Copyright (C) 2009 Albert Herranz
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -9,6 +15,7 @@
  * of the License, or (at your option) any later version.
  *
  */
+
 #define DRV_MODULE_NAME "latte-ahball-pic"
 #define pr_fmt(fmt) DRV_MODULE_NAME ": " fmt
 
@@ -18,54 +25,35 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <asm/io.h>
+#include "latte-ahball-pic.h"
 
-#define LATTE_AHBALL_NR_IRQS    32
-
-/*
- * Each interrupt has a corresponding bit in both
- * the Interrupt Cause (ICR) and Interrupt Mask (IMR) registers.
- *
- * Enabling/disabling an interrupt line involves asserting/clearing
- * the corresponding bit in IMR. ACK'ing a request simply involves
- * asserting the corresponding bit in ICR.
+/* IRQ chip operations
  */
 
-#define LATTE_AHBALL_ICR	0x00
-#define LATTE_AHBALL_IMR	0x08
-
-
-/* IRQ chip hooks */
-
 static void latte_ahball_pic_mask_and_ack(struct irq_data *d) {
-	int irq = irqd_to_hwirq(d);
-	void __iomem *io_base = irq_data_get_irq_chip_data(d);
-	u32 mask = 1 << irq;
-
-	out_be32(io_base + LATTE_AHBALL_ICR, mask);
-	clrbits32(io_base + LATTE_AHBALL_IMR, mask);
+	lt_pic_t __iomem *regs = irq_data_get_irq_chip_data(d);
+	u32 mask = 1 << irqd_to_hwirq(d);
+	out_be32(&regs->ahball_icr, mask);
+	clrbits32(&regs->ahball_imr, mask);
 }
 
 static void latte_ahball_pic_ack(struct irq_data *d) {
-	int irq = irqd_to_hwirq(d);
-	void __iomem *io_base = irq_data_get_irq_chip_data(d);
-
-	out_be32(io_base + LATTE_AHBALL_ICR, 1 << irq);
+	lt_pic_t __iomem *regs = irq_data_get_irq_chip_data(d);
+	u32 mask = 1 << irqd_to_hwirq(d);
+	out_be32(&regs->ahball_icr, mask);
 }
 
 static void latte_ahball_pic_mask(struct irq_data *d) {
-	int irq = irqd_to_hwirq(d);
-	void __iomem *io_base = irq_data_get_irq_chip_data(d);
-
-	clrbits32(io_base + LATTE_AHBALL_IMR, 1 << irq);
+	lt_pic_t __iomem *regs = irq_data_get_irq_chip_data(d);
+	u32 mask = 1 << irqd_to_hwirq(d);
+	clrbits32(&regs->ahball_imr, mask);
 }
 
 static void latte_ahball_pic_unmask(struct irq_data *d) {
-	int irq = irqd_to_hwirq(d);
-	void __iomem *io_base = irq_data_get_irq_chip_data(d);
-
-	setbits32(io_base + LATTE_AHBALL_IMR, 1 << irq);
+	lt_pic_t __iomem *regs = irq_data_get_irq_chip_data(d);
+	u32 mask = 1 << irqd_to_hwirq(d);
+	setbits32(&regs->ahball_imr, mask);
 }
-
 
 static struct irq_chip latte_ahball_pic = {
 	.name			= "latte-ahball-pic",
@@ -75,13 +63,12 @@ static struct irq_chip latte_ahball_pic = {
 	.irq_unmask		= latte_ahball_pic_unmask,
 };
 
-/*	Domain Ops
- *
+/* Domain Ops
  */
 
 static int latte_ahball_pic_match(struct irq_domain *h, struct device_node *node, enum irq_domain_bus_token bus_token) {
 	if (h->fwnode == &node->fwnode) {
-		printk("latte-ahball-pic: %s IRQ matches with this driver\n", node->name);
+		pr_debug("%s IRQ matches with this driver\n", node->name);
 		return 1;
 	}
 	return 0;
@@ -89,16 +76,18 @@ static int latte_ahball_pic_match(struct irq_domain *h, struct device_node *node
 
 static int latte_ahball_pic_alloc(struct irq_domain *h, unsigned int virq, unsigned int nr_irqs, void *arg) {
 	//See espresso-pic for slight elaboration
-	struct irq_fwspec* fwspec = (struct irq_fwspec*)arg;
+	struct irq_fwspec* fwspec = arg;
+	irq_hw_number_t hwirq = fwspec->param[0];
+	
 	irq_set_chip_data(virq, h->host_data);
 	irq_set_status_flags(virq, IRQ_LEVEL);
 	irq_set_chip_and_handler(virq, &latte_ahball_pic, handle_level_irq);
-	irq_domain_set_hwirq_and_chip(h, virq, fwspec->param[0], &latte_ahball_pic, h->host_data);
+	irq_domain_set_hwirq_and_chip(h, virq, hwirq, &latte_ahball_pic, h->host_data);
 	return 0;
 }
 
 static void latte_ahball_pic_free(struct irq_domain *h, unsigned int virq, unsigned int nr_irqs) {
-	printk("latte-ahball-pic: free\n");
+	pr_debug("free\n");
 }
 
 const struct irq_domain_ops latte_ahball_pic_ops = {
@@ -107,20 +96,13 @@ const struct irq_domain_ops latte_ahball_pic_ops = {
 	.free = latte_ahball_pic_free,
 };
 
-/*	Determinate if there are interrupts pending
- *
+/* Determinate if there are interrupts pending
  */
-
-//Store irq domain for latte_ahball_pic_get_irq (the function gets no arguments)
-static struct irq_domain *latte_ahball_irq_host;
-
-unsigned int latte_ahball_pic_get_irq(void) {
-	int irq;
-	u32 irq_status;
+unsigned int latte_ahball_pic_get_irq(struct irq_domain *h) {
+	lt_pic_t __iomem *regs = h->host_data;
+	u32 irq_status, irq;
 	
-	void __iomem *io_base = (void __iomem*)latte_ahball_irq_host->host_data;
-	
-	irq_status = in_be32(io_base + LATTE_AHBALL_ICR) & in_be32(io_base + LATTE_AHBALL_IMR);
+	irq_status = in_be32(&regs->ahball_icr) & in_be32(&regs->ahball_imr);
 
 	if (irq_status == 0)
 		return 0;	//No IRQs pending
@@ -129,26 +111,25 @@ unsigned int latte_ahball_pic_get_irq(void) {
 	irq = __ffs(irq_status);
 	
 	//Return the virtual IRQ
-	return irq_linear_revmap(latte_ahball_irq_host, irq);
+	return irq_linear_revmap(h, irq);
 }
 
-/*	Cascade IRQ handler
- *
+/* Cascade IRQ handler
  */
-
-static void latte_ahball_pic_irq_cascade(struct irq_desc *desc) {
+static void latte_ahball_irq_cascade(struct irq_desc *desc) {
+	struct irq_domain *irq_domain = irq_desc_get_handler_data(desc);
 	struct irq_chip *chip = irq_desc_get_chip(desc);
 	unsigned int virq;
-
+	
 	raw_spin_lock(&desc->lock);
 	chip->irq_mask(&desc->irq_data); /* IRQ_LEVEL */
 	raw_spin_unlock(&desc->lock);
-	
-	virq = latte_ahball_pic_get_irq();
+		
+	virq = latte_ahball_pic_get_irq(irq_domain);
 	if (virq)
 		generic_handle_irq(virq);
 	else
-		pr_err("latte-ahball-pic: spurious interrupt!\n");
+		pr_err("spurious interrupt!\n");
 
 	raw_spin_lock(&desc->lock);
 	chip->irq_ack(&desc->irq_data); /* IRQ_LEVEL */
@@ -157,65 +138,57 @@ static void latte_ahball_pic_irq_cascade(struct irq_desc *desc) {
 	raw_spin_unlock(&desc->lock);
 }
 
-
-/*	Init function
- *
+/* Init function
  */
-
-struct irq_domain *latte_ahball_pic_init(struct device_node *np) {
+static void latte_ahball_pic_init(struct device_node *np) {
+	int irq_cascade;	
 	struct irq_domain *irq_domain;
 	struct resource res;
-	void __iomem *io_base;
-	int retval;
+	lt_pic_t __iomem *regs;
 
-	retval = of_address_to_resource(np, 0, &res);
-	if (retval) {
-		pr_err("no io memory range found\n");
-		return NULL;
+	//Check if the driver is valid
+	if(!of_get_property(np, "interrupts", NULL)) {
+		pr_err("no cascade interrupt specified\n");
+		return;
 	}
-	io_base = ioremap(res.start, resource_size(&res));
-	if (IS_ERR(io_base)) {
+		
+	//Map registers
+	if(of_address_to_resource(np, 0, &res)) {
+		pr_err("failed to own register area\n");
+		return;
+	}
+	regs = ioremap(res.start, resource_size(&res));
+	if(IS_ERR(regs)) {
 		pr_err("ioremap failed\n");
-		return NULL;
+		return;
 	}
+	pr_info("controller at 0x%08x mapped to 0x%p\n", res.start, regs);	
 
-	pr_info("controller at 0x%08x mapped to 0x%p\n", res.start, io_base);
-
-	// mask and ack all IRQs
-	out_be32(io_base + LATTE_AHBALL_IMR, 0);
-	out_be32(io_base + LATTE_AHBALL_ICR, 0xffffffff);
+	//Mask and Ack all IRQs
+	out_be32(&regs->ahball_imr, 0);
+	out_be32(&regs->ahball_icr, 0xffffffff);
 	
-	irq_domain = irq_domain_add_linear(np, LATTE_AHBALL_NR_IRQS, &latte_ahball_pic_ops, io_base);
-
+	//Register PIC
+	irq_domain = irq_domain_add_linear(np, LATTE_AHBALL_NR_IRQS, &latte_ahball_pic_ops, regs);
 	if (!irq_domain) {
-		pr_err("latte-ahball-pic: failed to allocate irq_domain\n");
-		iounmap(io_base);
-		return NULL;
+		pr_err("failed to add irq domain\n");
+		iounmap(regs);
+		return;
 	}
-
-	return irq_domain;
+	
+	//Setup cascade interrupt
+	irq_cascade = irq_of_parse_and_map(np, 0);
+	irq_set_chained_handler_and_data(irq_cascade, latte_ahball_irq_cascade, irq_domain);
+	
+	//Success
+	pr_info("successfully initialized\n");
 }
 
-/*	Probe function
- *
+/* Probe function
  */
-
 void latte_ahball_pic_probe(void) {
-	struct irq_domain *host;
 	struct device_node *np;
-	const u32 *interrupts;
-	int cascade_virq;
-
-	for_each_compatible_node(np, NULL, "nintendo,latte-ahball-pic") {
-		interrupts = of_get_property(np, "interrupts", NULL);
-		if (interrupts) {
-			host = latte_ahball_pic_init(np);
-			BUG_ON(!host);
-			cascade_virq = irq_of_parse_and_map(np, 0);
-			irq_set_handler_data(cascade_virq, host);
-			irq_set_chained_handler(cascade_virq, latte_ahball_pic_irq_cascade);
-			latte_ahball_irq_host = host;
-			break;
-		}
-	}
+	
+	for_each_compatible_node(np, NULL, "nintendo,latte-ahball-pic")
+		latte_ahball_pic_init(np);
 }
