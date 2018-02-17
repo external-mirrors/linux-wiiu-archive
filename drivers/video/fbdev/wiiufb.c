@@ -3,12 +3,16 @@
  * Based on xilinxfb
  */
 
+#include <linux/types.h>
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/major.h>
 #include <linux/errno.h>
 #include <linux/string.h>
 #include <linux/mm.h>
+#include <linux/mman.h>
+#include <linux/vt.h>
 #include <linux/fb.h>
 #include <linux/init.h>
 #include <linux/dma-mapping.h>
@@ -17,18 +21,22 @@
 #include <linux/of_address.h>
 #include <linux/io.h>
 #include <linux/slab.h>
+#include <linux/compat.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
+#include <linux/console.h>
+#include <linux/kmod.h>
+#include <linux/err.h>
+#include <linux/efi.h>
+#include <linux/delay.h>
 #include <stdarg.h>
 #include <asm/cacheflush.h>
 #include <asm/io.h>
+#include <asm/fb.h>
 
 #include "wiiufb_regs.h"
 
 #define DRIVER_NAME		"wiiufb"
-
-/*	TODO:
- *	There's some kind of caching issue going on here.
- *	Seems it might be something in copyarea or imageblit?
- */
 
 //Useful for reading stuff out from the GX2's MMIO
 static int leak_mmio = 0xDEADCAFE;
@@ -104,16 +112,43 @@ static int wiiufb_setcolreg(unsigned regno, unsigned red, unsigned green, unsign
 	return 0;
 }
 
+/*
+ * Since there's no cache coherency between Espresso and Latte, the framebuffer
+ * must be mapped with write-trough caching or with caching disabled
+ */
+static int wiiufb_mmap(struct fb_info *info, struct vm_area_struct * vma)
+{
+	unsigned long mmio_pgoff;
+	unsigned long start;
+	u32 len;
+
+	start = info->fix.smem_start;
+	len = info->fix.smem_len;
+	mmio_pgoff = PAGE_ALIGN((start & ~PAGE_MASK) + len) >> PAGE_SHIFT;
+	if (vma->vm_pgoff >= mmio_pgoff) {
+		if (info->var.accel_flags)
+			return -EINVAL;
+
+		vma->vm_pgoff -= mmio_pgoff;
+		start = info->fix.mmio_start;
+		len = info->fix.mmio_len;
+	}
+	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+	
+	return vm_iomap_memory(vma, start, len);
+}
+
+
 static struct fb_ops wiiufb_ops = {
 	.owner				= THIS_MODULE,
 	.fb_setcolreg		= wiiufb_setcolreg,
+	.fb_mmap			= wiiufb_mmap,
 	.fb_fillrect		= cfb_fillrect,
 	.fb_copyarea		= cfb_copyarea,
 	.fb_imageblit		= cfb_imageblit,
 };
 
 
-#include <linux/delay.h>
 static int wiiufb_assign(struct platform_device *pdev, struct wiiufb_drvdata *drvdata, struct wiiufb_platform_data *pdata) {
 	int rc;
 	struct device *dev = &pdev->dev;
@@ -164,6 +199,8 @@ static int wiiufb_assign(struct platform_device *pdev, struct wiiufb_drvdata *dr
 	drvdata->info.fix.smem_start = drvdata->fb_phys;
 	drvdata->info.fix.smem_len = fbsize;
 	drvdata->info.fix.line_length = pdata->width * BYTES_PER_PIXEL;
+	drvdata->info.fix.mmio_start = res->start;
+	drvdata->info.fix.mmio_len = resource_size(res);
 
 	drvdata->info.pseudo_palette = drvdata->pseudo_palette;
 	drvdata->info.flags = FBINFO_DEFAULT;

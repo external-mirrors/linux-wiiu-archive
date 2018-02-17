@@ -64,5 +64,5 @@ While we started off developing with Gentoo, we swapped to Debian unstable (ever
 
 ##### Notes
  - This version of Debian is set up to keep the kernel up to date - it'll mount the SD whenever it does this. Remove `deb.heyquark.com` from the apt sources to disable this.
- - X.org works (w/ software rendering) but there's some kind of caching issue that puts lines on moving sections of the screen.
+ - X.org works (w/ software rendering).
  - If you can come up with a better guide (esp. one including steps for Windows users) feel free to PR it in.
