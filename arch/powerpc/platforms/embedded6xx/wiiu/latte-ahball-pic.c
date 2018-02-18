@@ -76,13 +76,16 @@ static int latte_ahball_pic_match(struct irq_domain *h, struct device_node *node
 
 static int latte_ahball_pic_alloc(struct irq_domain *h, unsigned int virq, unsigned int nr_irqs, void *arg) {
 	//See espresso-pic for slight elaboration
+	unsigned int i;
 	struct irq_fwspec* fwspec = arg;
 	irq_hw_number_t hwirq = fwspec->param[0];
 	
-	irq_set_chip_data(virq, h->host_data);
-	irq_set_status_flags(virq, IRQ_LEVEL);
-	irq_set_chip_and_handler(virq, &latte_ahball_pic, handle_level_irq);
-	irq_domain_set_hwirq_and_chip(h, virq, hwirq, &latte_ahball_pic, h->host_data);
+	for (i = 0; i < nr_irqs; i++) {
+		irq_set_chip_data(virq + i, h->host_data);
+		irq_set_status_flags(virq + i, IRQ_LEVEL);
+		irq_set_chip_and_handler(virq + i, &latte_ahball_pic, handle_level_irq);
+		irq_domain_set_hwirq_and_chip(h, virq + i, hwirq + i, &latte_ahball_pic, h->host_data);
+	}
 	return 0;
 }
 

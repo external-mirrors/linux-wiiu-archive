@@ -39,7 +39,7 @@ static int latte_gpio_get(struct gpio_chip *gc, unsigned int gpio)
 	lt_gpio_t __iomem *regs = mm_gc->regs;
 	unsigned int val;
 
-	val = (in_be32(&regs->in) & (1 << gpio)) != 0;
+	val = (in_be32(&regs->ein) & (1 << gpio)) != 0;
 
 	pr_info("%s: gpio: %d val: %d\n", __func__, gpio, val);
 
@@ -56,10 +56,10 @@ static void latte_gpio_set(struct gpio_chip *gc, unsigned int gpio, int val)
 	unsigned long flags;
 
 	spin_lock_irqsave(&lt_gc->lock, flags);
-	data = in_be32(&regs->in) & ~pin_mask;
+	data = in_be32(&regs->ein) & ~pin_mask;
 	if (val)
 		data |= pin_mask;
-	out_be32(&regs->out, data);
+	out_be32(&regs->eout, data);
 	spin_unlock_irqrestore(&lt_gc->lock, flags);
 
 	pr_info("%s: gpio: %d val: %d\n", __func__, gpio, val);
@@ -71,8 +71,7 @@ static int latte_gpio_dir_in(struct gpio_chip *gc, unsigned int gpio)
 	lt_gpio_t __iomem *regs = mm_gc->regs;
 	u32 pin_mask = 1 << gpio;
 
-	setbits32(&regs->enable, pin_mask);
-	clrbits32(&regs->dir, pin_mask);
+	clrbits32(&regs->edir, pin_mask);
 
 	return 0;
 }
@@ -83,8 +82,7 @@ static int latte_gpio_dir_out(struct gpio_chip *gc, unsigned int gpio, int val)
 	lt_gpio_t __iomem *regs = mm_gc->regs;
 	u32 pin_mask = 1 << gpio;
 
-	setbits32(&regs->enable, pin_mask);
-	setbits32(&regs->dir, pin_mask);
+	setbits32(&regs->edir, pin_mask);
 	latte_gpio_set(gc, gpio, val);
 
 	return 0;
@@ -109,7 +107,6 @@ void latte_gpio_add32(struct device_node *np) {
 	struct of_mm_gpio_chip *mm_gc;
 	struct latte_gpio_chip *lt_gc;
 	struct gpio_chip *gc;
-	lt_gpio_t __iomem *regs;
 	
 	lt_gc = kzalloc(sizeof(*lt_gc), GFP_KERNEL);
 	if (!lt_gc) {
@@ -134,11 +131,9 @@ void latte_gpio_add32(struct device_node *np) {
 		return;
 	}
 	
-	regs = mm_gc->regs;
-	pr_info("added %u gpios at %p\n", gc->ngpio, regs);
+	pr_info("added %u gpios at %p\n", gc->ngpio, mm_gc->regs);
 	
-	out_be32(&regs->owner, 0);
-	lt_gc->irq_domain = latte_gpio_pic_init(np, regs);
+	lt_gc->irq_domain = latte_gpio_pic_init(np, mm_gc->regs);
 }
 
 static int latte_gpio_init(void) {

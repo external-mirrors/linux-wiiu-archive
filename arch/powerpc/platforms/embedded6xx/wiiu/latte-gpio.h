@@ -37,15 +37,6 @@ typedef struct __attribute__((packed)) {
 	__be32 eintflag;	/* GPIO Interrupt Flags (Espresso access) */
 	__be32 eintmask;	/* GPIO Interrupt Masks (Espresso access) */
 	__be32 einmir;		/* GPIO Input Mirror (Espresso access) */
-	__be32 enable;		/* GPIO Enable (Starbuck only) */
-	__be32 out;			/* GPIO Outputs (Starbuck only) */
-	__be32 dir;			/* GPIO Direction (Starbuck only) */
-	__be32 in;			/* GPIO Inputs (Starbuck only) */
-	__be32 intlvl;		/* GPIO Interrupt Levels (Starbuck only) */
-	__be32 intflag;		/* GPIO Interrupt Flags (Starbuck only) */
-	__be32 intmask;		/* GPIO Interrupt Masks (Starbuck only) */
-	__be32 inmir;		/* GPIO Input Mirror (Starbuck only) */
-	__be32 owner;		/* GPIO Owner Select (Starbuck only) */
 } lt_gpio_t;
 
 

@@ -31,23 +31,23 @@
 static void latte_gpio_pic_mask_and_ack(struct irq_data *d) {
 	lt_gpio_t __iomem *regs = irq_data_get_irq_chip_data(d);
 	u32 mask = 1 << irqd_to_hwirq(d);
-	out_be32(&regs->intflag, mask);
-	clrbits32(&regs->intmask, mask);
+	out_be32(&regs->eintflag, mask);
+	clrbits32(&regs->eintmask, mask);
 }
 
 static void latte_gpio_pic_ack(struct irq_data *d) {
 	lt_gpio_t __iomem *regs = irq_data_get_irq_chip_data(d);
-	out_be32(&regs->intflag, 1 << irqd_to_hwirq(d));
+	out_be32(&regs->eintflag, 1 << irqd_to_hwirq(d));
 }
 
 static void latte_gpio_pic_mask(struct irq_data *d) {
 	lt_gpio_t __iomem *regs = irq_data_get_irq_chip_data(d);
-	clrbits32(&regs->intmask, 1 << irqd_to_hwirq(d));
+	clrbits32(&regs->eintmask, 1 << irqd_to_hwirq(d));
 }
 
 static void latte_gpio_pic_unmask(struct irq_data *d) {
 	lt_gpio_t __iomem *regs = irq_data_get_irq_chip_data(d);
-	setbits32(&regs->intmask, 1 << irqd_to_hwirq(d));
+	setbits32(&regs->eintmask, 1 << irqd_to_hwirq(d));
 }
 
 static struct irq_chip latte_gpio_pic = {
@@ -69,20 +69,23 @@ static int latte_gpio_pic_match(struct irq_domain *h, struct device_node *node, 
 	return 0;
 }
 
-static int latte_gpio_pic_alloc(struct irq_domain *d, unsigned int virq, unsigned int nr_irqs, void *arg) {
+static int latte_gpio_pic_alloc(struct irq_domain *h, unsigned int virq, unsigned int nr_irqs, void *arg) {
 	//See espresso-pic for slight elaboration
+	unsigned int i;
 	struct irq_fwspec* fwspec = arg;
 	irq_hw_number_t hwirq = fwspec->param[0];
-		
-	irq_set_chip_data(virq, d->host_data);
-	irq_set_status_flags(virq, IRQ_LEVEL);
-	irq_set_chip_and_handler(virq, &latte_gpio_pic, handle_level_irq);
-	irq_domain_set_hwirq_and_chip(d, virq, hwirq, &latte_gpio_pic, d->host_data);
+	
+	for (i = 0; i < nr_irqs; i++) {
+		irq_set_chip_data(virq + i, h->host_data);
+		irq_set_status_flags(virq + i, IRQ_LEVEL);
+		irq_set_chip_and_handler(virq + i, &latte_gpio_pic, handle_level_irq);
+		irq_domain_set_hwirq_and_chip(h, virq + i, hwirq + i, &latte_gpio_pic, h->host_data);
+	}
 	return 0;
 }
 
-static void latte_gpio_pic_free(struct irq_domain *d, unsigned int virq, unsigned int nr_irqs) {
-	struct irq_data *data = irq_domain_get_irq_data(d, virq);
+static void latte_gpio_pic_free(struct irq_domain *h, unsigned int virq, unsigned int nr_irqs) {
+	struct irq_data *data = irq_domain_get_irq_data(h, virq);
 	
 	irq_domain_reset_irq_data(data);
 	pr_debug("free\n");
@@ -101,7 +104,7 @@ unsigned int latte_gpio_pic_get_irq(struct irq_domain *h) {
 	u32 irq_status, irq;
 	
 	//Get IRQ status
-	irq_status = in_be32(&regs->intmask) & in_be32(&regs->intflag);
+	irq_status = in_be32(&regs->eintmask) & in_be32(&regs->eintflag);
 	
 	if (irq_status == 0)
 		return 0;	//No IRQs pending
@@ -150,8 +153,8 @@ struct irq_domain *latte_gpio_pic_init(struct device_node *np, lt_gpio_t __iomem
 	}
 	
 	//Mask and Ack all IRQs
-	out_be32(&regs->intmask, 0);
-	out_be32(&regs->intflag, 0xffffffff);
+	out_be32(&regs->eintmask, 0);
+	out_be32(&regs->eintflag, 0xffffffff);
 	
 	//Register PIC
 	irq_domain = irq_domain_add_linear(np, LATTE_GPIO_NR, &latte_gpio_pic_ops, regs);

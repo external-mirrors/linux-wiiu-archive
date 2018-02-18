@@ -75,14 +75,17 @@ static int espresso_pic_match(struct irq_domain *h, struct device_node *node, en
 
 static int espresso_pic_alloc(struct irq_domain *h, unsigned int virq, unsigned int nr_irqs, void *arg) {
 	//hacky; but it works. Brilliantly.
+	unsigned int i;
 	struct irq_fwspec* fwspec = arg;
 	irq_hw_number_t hwirq = fwspec->param[0];
-
-	irq_set_chip_data(virq, h->host_data);
-	irq_set_status_flags(virq, IRQ_LEVEL);
-	irq_set_chip_and_handler(virq, &espresso_pic_chip, handle_level_irq);
-	//Here's the other end of that wonderful hack
-	irq_domain_set_hwirq_and_chip(h, virq, hwirq, &espresso_pic_chip, h->host_data);
+	
+	for (i = 0; i < nr_irqs; i++) {		
+		irq_set_chip_data(virq + i, h->host_data);
+		irq_set_status_flags(virq + i, IRQ_LEVEL);
+		irq_set_chip_and_handler(virq + i, &espresso_pic_chip, handle_level_irq);
+		//Here's the other end of that wonderful hack
+		irq_domain_set_hwirq_and_chip(h, virq + i, hwirq + i, &espresso_pic_chip, h->host_data);
+	}
 	return 0;
 }
 

@@ -108,7 +108,7 @@
 			gpio-controller;
 			interrupt-controller;
 			interrupt-parent = <&pic1>;
-			interrupts = <11>;
+			interrupts = <10>;
 			
 			pwrbutton {
 				gpio-hog;
