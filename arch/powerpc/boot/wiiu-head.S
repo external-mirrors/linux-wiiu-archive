@@ -72,7 +72,7 @@ _zimage_start:
 	mtspr 0x21b, r8	/* DBAT1L */
 	mtspr 0x213, r8	/* IBAT1L */
 
-	/* Debug area */
+	/* Command line area */
 	/* 64MB, starting at 0x89200000... */
 	lis r8, 0x892007ff@ha
 	ori r8, r8,0x89200007ff@l

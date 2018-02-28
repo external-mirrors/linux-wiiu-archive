@@ -11,18 +11,23 @@
  *
  */
 
- #include <stddef.h>
- #include "stdio.h"
- #include "types.h"
- #include "io.h"
- #include "ops.h"
+#include <stddef.h>
+#include "string.h"
+#include "stdio.h"
+#include "types.h"
+#include "io.h"
+#include "ops.h"
 
 BSS_STACK(8192);
 
-void* mem2_dbg_location = (void *)0x89200000;
-void mem2_dbg_write(const char* buf, int len) {
-	memcpy(mem2_dbg_location, buf, len);
-	mem2_dbg_location += len;
+#define CMDLINE_CANARY_LOC (unsigned int*)0x89200000
+#define CMDLINE_CANARY_MAGIC (unsigned int)0xCAFEFECA
+#define CMDLINE_LOC (char*)0x89200004
+static void wiiu_copy_cmdline(char* cmdline, int cmdlineSz, unsigned int timeout) {
+/*	If the ARM left us a commandline, copy it in */
+	if (*CMDLINE_CANARY_LOC == CMDLINE_CANARY_MAGIC) {
+		strncpy(cmdline, CMDLINE_LOC, 256);
+	}
 }
 
 /* Mostly copied from gamecube.c. Obviously the GameCube is not the same
@@ -34,5 +39,5 @@ void platform_init(unsigned int r3, unsigned int r4, unsigned int r5) {
 
 	fdt_init(_dtb_start);
 
-	console_ops.write = mem2_dbg_write;
+	console_ops.edit_cmdline = wiiu_copy_cmdline;
 }
