@@ -63,6 +63,15 @@ While we started off developing with Gentoo, we swapped to Debian unstable (ever
 4. Run `tar -xvpf <path/to/debian.tar.xz>`. The p is important, you could skip the v.
 5. Eject the drive and plug it into your Wii U. With any luck, it'll boot Debian! Log in with username root and password root.
 
+For Windows users, we've created an image as of 2/28/2018 that you can load with Win32DiskImager (or equivalent). For now, it's a fixed 2 GB image, but partition resizing might be implemented eventually. Instructions:
+
+1. Grab a USB (2 GB minimum) and plug it in. Note the drive letter; you'll need this in step 3.
+2. Download [this](https://mega.nz/#!PvhwlaYT!iVGqf7W7dm4XATwJFiCeTzgvaPXBhVLIhzuiUjPF6JQ) disk image and a copy of [Win32DiskImager](https://sourceforge.net/projects/win32diskimager/files/).
+3. In Win32DiskImager, load the disk image, select the drive letter of your USB, and click Write. **Be very careful to pick the right drive letter; you don't want to write to your main hard disk!**
+4. After Win32DiskImager finishes writing, eject the drive and plug it into your Wii U. With any luck, it'll boot Debian! Log in with username root and password root.
+
+(This comes with a small bonus: you can also use Win32DiskImager to back up your root filesystem by reading the drive to a new file.)
+
 ##### Notes
  - This version of Debian is set up to keep the kernel up to date - it'll mount the SD whenever it does this. Remove `deb.heyquark.com` from the apt sources to disable this.
  - X.org works (w/ software rendering).
