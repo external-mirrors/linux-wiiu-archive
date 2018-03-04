@@ -20,13 +20,22 @@
 
 BSS_STACK(8192);
 
-#define CMDLINE_CANARY_LOC (unsigned int*)0x89200000
-#define CMDLINE_CANARY_MAGIC (unsigned int)0xCAFEFECA
-#define CMDLINE_LOC (char*)0x89200004
+/* If this struct ever has to be changed in a non-ABI compatible way,
+   change the magic.
+   Past magics:
+    - 0xCAFEFECA: initial version
+*/
+#define WIIU_LOADER_MAGIC 0xCAFEFECA
+struct wiiu_loader_data {
+	unsigned int magic;
+	char cmdline[256];
+};
+const struct wiiu_loader_data* loader_data = (void*)0x89200000;
+
 static void wiiu_copy_cmdline(char* cmdline, int cmdlineSz, unsigned int timeout) {
 /*	If the ARM left us a commandline, copy it in */
-	if (*CMDLINE_CANARY_LOC == CMDLINE_CANARY_MAGIC) {
-		strncpy(cmdline, CMDLINE_LOC, 256);
+	if (loader_data->magic == WIIU_LOADER_MAGIC) {
+		strncpy(cmdline, loader_data->cmdline, 256);
 	}
 }
 
