@@ -39,7 +39,7 @@ make ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu- CROSS32_COMPILE=powerpc-linux
 This'll build `arch/powerpc/boot/dtbImage.wiiu`. From here, check on [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) for your next steps. There are no kernel modules to worry about, unless you build your own.
 
 ### Booting
-The kernel commandline is hardcoded (for now) with `root=sda1 rootwait`. This means you'll need to use a USB flash drive as your rootfs. Format it however you'd like (yes, ext4/gpt works) and throw a distro on it - see below for Debian instructions. Plug it and a USB keyboard into the Wii U. Run [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) (as described in that repo's README) and enjoy your Linux!
+The kernel commandline is hardcoded (for now) with `root=sda1 rootwait` - check out [linux-wiiu/linux-loader's boot.cfg support](https://gitlab.com/linux-wiiu/linux-wiiu#advanced-setup-boot-cfg) for info on how you can change this. If you stick with the defaults, you'll need to use a USB flash drive as your rootfs. Format it however you'd like (yes, ext4/gpt works) and throw a distro on it - see below for Debian instructions. Plug it and a USB keyboard into the Wii U. Run [linux-wiiu/linux-loader](https://gitlab.com/linux-wiiu/linux-loader) (as described in that repo's README) and enjoy your Linux!
 
 ### Device Support
 As it stands, we've got:
@@ -63,7 +63,7 @@ While we started off developing with Gentoo, we swapped to Debian unstable (ever
 4. Run `tar -xvpf <path/to/debian.tar.xz>`. The p is important, you could skip the v.
 5. Eject the drive and plug it into your Wii U. With any luck, it'll boot Debian! Log in with username root and password root.
 
-For Windows users, we've created an image as of 2/28/2018 that you can load with Win32DiskImager (or equivalent). For now, it's a fixed 2 GB image, but partition resizing might be implemented eventually. Instructions:
+For Windows users, we've created an image as of 2018-02-28 that you can load with Win32DiskImager (or equivalent). For now, it's a fixed 2 GB image, but partition resizing might be implemented eventually. Instructions:
 
 1. Grab a USB (2 GB minimum) and plug it in. Note the drive letter; you'll need this in step 3.
 2. Download [this](https://mega.nz/#!PvhwlaYT!iVGqf7W7dm4XATwJFiCeTzgvaPXBhVLIhzuiUjPF6JQ) disk image and a copy of [Win32DiskImager](https://sourceforge.net/projects/win32diskimager/files/).
