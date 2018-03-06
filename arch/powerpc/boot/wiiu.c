@@ -29,13 +29,15 @@ BSS_STACK(8192);
 struct wiiu_loader_data {
 	unsigned int magic;
 	char cmdline[256];
+	void* initrd;
+	unsigned int initrd_sz;
 };
-const struct wiiu_loader_data* loader_data = (void*)0x89200000;
+const static struct wiiu_loader_data* arm_data = (void*)0x89200000;
 
 static void wiiu_copy_cmdline(char* cmdline, int cmdlineSz, unsigned int timeout) {
 /*	If the ARM left us a commandline, copy it in */
-	if (loader_data->magic == WIIU_LOADER_MAGIC) {
-		strncpy(cmdline, loader_data->cmdline, 256);
+	if (arm_data->magic == WIIU_LOADER_MAGIC) {
+		strncpy(cmdline, arm_data->cmdline, 256);
 	}
 }
 
@@ -49,4 +51,11 @@ void platform_init(unsigned int r3, unsigned int r4, unsigned int r5) {
 	fdt_init(_dtb_start);
 
 	console_ops.edit_cmdline = wiiu_copy_cmdline;
+	if (arm_data->magic == WIIU_LOADER_MAGIC) {
+		if (arm_data->initrd_sz > 0) {
+			loader_info.initrd_addr = (unsigned long)arm_data->initrd;
+			loader_info.initrd_size = (unsigned long)arm_data->initrd_sz;
+		}
+		//loader_info.cmdline = arm_data->cmdline;
+	}
 }
