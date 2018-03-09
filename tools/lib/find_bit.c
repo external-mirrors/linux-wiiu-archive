@@ -126,4 +126,3 @@ unsigned long find_next_and_bit(const unsigned long *addr1,
 	return _find_next_bit(addr1, addr2, size, offset, 0UL);
 }
 #endif
-

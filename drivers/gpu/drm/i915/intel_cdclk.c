@@ -1370,10 +1370,15 @@ static void bxt_set_cdclk(struct drm_i915_private *dev_priv,
 		break;
 	}
 
-	/* Inform power controller of upcoming frequency change */
+	/*
+	 * Inform power controller of upcoming frequency change. BSpec
+	 * requires us to wait up to 150usec, but that leads to timeouts;
+	 * the 2ms used here is based on experiment.
+	 */
 	mutex_lock(&dev_priv->pcu_lock);
-	ret = sandybridge_pcode_write(dev_priv, HSW_PCODE_DE_WRITE_FREQ_REQ,
-				      0x80000000);
+	ret = sandybridge_pcode_write_timeout(dev_priv,
+					      HSW_PCODE_DE_WRITE_FREQ_REQ,
+					      0x80000000, 2000);
 	mutex_unlock(&dev_priv->pcu_lock);
 
 	if (ret) {
@@ -1404,8 +1409,15 @@ static void bxt_set_cdclk(struct drm_i915_private *dev_priv,
 	I915_WRITE(CDCLK_CTL, val);
 
 	mutex_lock(&dev_priv->pcu_lock);
-	ret = sandybridge_pcode_write(dev_priv, HSW_PCODE_DE_WRITE_FREQ_REQ,
-				      cdclk_state->voltage_level);
+	/*
+	 * The timeout isn't specified, the 2ms used here is based on
+	 * experiment.
+	 * FIXME: Waiting for the request completion could be delayed until
+	 * the next PCODE request based on BSpec.
+	 */
+	ret = sandybridge_pcode_write_timeout(dev_priv,
+					      HSW_PCODE_DE_WRITE_FREQ_REQ,
+					      cdclk_state->voltage_level, 2000);
 	mutex_unlock(&dev_priv->pcu_lock);
 
 	if (ret) {
@@ -1939,6 +1951,14 @@ int intel_crtc_compute_min_cdclk(const struct intel_crtc_state *crtc_state)
 	 */
 	if (crtc_state->has_audio && INTEL_GEN(dev_priv) >= 9)
 		min_cdclk = max(2 * 96000, min_cdclk);
+
+	/*
+	 * On Valleyview some DSI panels lose (v|h)sync when the clock is lower
+	 * than 320000KHz.
+	 */
+	if (intel_crtc_has_type(crtc_state, INTEL_OUTPUT_DSI) &&
+	    IS_VALLEYVIEW(dev_priv))
+		min_cdclk = max(320000, min_cdclk);
 
 	if (min_cdclk > dev_priv->max_cdclk_freq) {
 		DRM_DEBUG_KMS("required cdclk (%d kHz) exceeds max (%d kHz)\n",

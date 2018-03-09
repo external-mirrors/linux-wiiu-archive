@@ -20,15 +20,16 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <linux/acpi.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/module.h>
+#include <linux/pci.h>
 #include <linux/uaccess.h>
 
 #include <asm/cpu_device_id.h>
 #include <asm/intel-family.h>
-#include <asm/pmc_core.h>
 
 #include "intel_pmc_core.h"
 
@@ -120,6 +121,90 @@ static const struct pmc_reg_map spt_reg_map = {
 	.ppfear_buckets = SPT_PPFEAR_NUM_ENTRIES,
 	.pm_cfg_offset = SPT_PMC_PM_CFG_OFFSET,
 	.pm_read_disable_bit = SPT_PMC_READ_DISABLE_BIT,
+};
+
+/* Cannonlake: PGD PFET Enable Ack Status Register(s) bitmap */
+static const struct pmc_bit_map cnp_pfear_map[] = {
+	{"PMC",                 BIT(0)},
+	{"OPI-DMI",             BIT(1)},
+	{"SPI/eSPI",            BIT(2)},
+	{"XHCI",                BIT(3)},
+	{"SPA",                 BIT(4)},
+	{"SPB",                 BIT(5)},
+	{"SPC",                 BIT(6)},
+	{"GBE",                 BIT(7)},
+
+	{"SATA",                BIT(0)},
+	{"HDA_PGD0",            BIT(1)},
+	{"HDA_PGD1",            BIT(2)},
+	{"HDA_PGD2",            BIT(3)},
+	{"HDA_PGD3",            BIT(4)},
+	{"SPD",                 BIT(5)},
+	{"LPSS",                BIT(6)},
+	{"LPC",                 BIT(7)},
+
+	{"SMB",                 BIT(0)},
+	{"ISH",                 BIT(1)},
+	{"P2SB",                BIT(2)},
+	{"NPK_VNN",             BIT(3)},
+	{"SDX",                 BIT(4)},
+	{"SPE",                 BIT(5)},
+	{"Fuse",                BIT(6)},
+	{"Res_23",              BIT(7)},
+
+	{"CSME_FSC",            BIT(0)},
+	{"USB3_OTG",            BIT(1)},
+	{"EXI",                 BIT(2)},
+	{"CSE",                 BIT(3)},
+	{"csme_kvm",            BIT(4)},
+	{"csme_pmt",            BIT(5)},
+	{"csme_clink",          BIT(6)},
+	{"csme_ptio",           BIT(7)},
+
+	{"csme_usbr",           BIT(0)},
+	{"csme_susram",         BIT(1)},
+	{"csme_smt1",           BIT(2)},
+	{"CSME_SMT4",           BIT(3)},
+	{"csme_sms2",           BIT(4)},
+	{"csme_sms1",           BIT(5)},
+	{"csme_rtc",            BIT(6)},
+	{"csme_psf",            BIT(7)},
+
+	{"SBR0",                BIT(0)},
+	{"SBR1",                BIT(1)},
+	{"SBR2",                BIT(2)},
+	{"SBR3",                BIT(3)},
+	{"SBR4",                BIT(4)},
+	{"SBR5",                BIT(5)},
+	{"CSME_PECI",           BIT(6)},
+	{"PSF1",                BIT(7)},
+
+	{"PSF2",                BIT(0)},
+	{"PSF3",                BIT(1)},
+	{"PSF4",                BIT(2)},
+	{"CNVI",                BIT(3)},
+	{"UFS0",                BIT(4)},
+	{"EMMC",                BIT(5)},
+	{"Res_6",               BIT(6)},
+	{"SBR6",                BIT(7)},
+
+	{"SBR7",                BIT(0)},
+	{"NPK_AON",             BIT(1)},
+	{"HDA_PGD4",            BIT(2)},
+	{"HDA_PGD5",            BIT(3)},
+	{"HDA_PGD6",            BIT(4)},
+	{}
+};
+
+static const struct pmc_reg_map cnp_reg_map = {
+	.pfear_sts = cnp_pfear_map,
+	.slp_s0_offset = CNP_PMC_SLP_S0_RES_COUNTER_OFFSET,
+	.ltr_ignore_offset = CNP_PMC_LTR_IGNORE_OFFSET,
+	.regmap_length = CNP_PMC_MMIO_REG_LEN,
+	.ppfear0_offset = CNP_PMC_HOST_PPFEAR0A,
+	.ppfear_buckets = CNP_PPFEAR_NUM_ENTRIES,
+	.pm_cfg_offset = CNP_PMC_PM_CFG_OFFSET,
+	.pm_read_disable_bit = CNP_PMC_READ_DISABLE_BIT,
 };
 
 static inline u8 pmc_core_reg_read_byte(struct pmc_dev *pmcdev, int offset)
@@ -447,15 +532,22 @@ static const struct x86_cpu_id intel_pmc_core_ids[] = {
 	ICPU(INTEL_FAM6_SKYLAKE_DESKTOP, &spt_reg_map),
 	ICPU(INTEL_FAM6_KABYLAKE_MOBILE, &spt_reg_map),
 	ICPU(INTEL_FAM6_KABYLAKE_DESKTOP, &spt_reg_map),
+	ICPU(INTEL_FAM6_CANNONLAKE_MOBILE, &cnp_reg_map),
 	{}
 };
 
 MODULE_DEVICE_TABLE(x86cpu, intel_pmc_core_ids);
 
+static const struct pci_device_id pmc_pci_ids[] = {
+	{ PCI_VDEVICE(INTEL, SPT_PMC_PCI_DEVICE_ID), 0},
+	{ 0, },
+};
+
 static int __init pmc_core_probe(void)
 {
 	struct pmc_dev *pmcdev = &pmc;
 	const struct x86_cpu_id *cpu_id;
+	u64 slp_s0_addr;
 	int err;
 
 	cpu_id = x86_match_cpu(intel_pmc_core_ids);
@@ -463,7 +555,20 @@ static int __init pmc_core_probe(void)
 		return -ENODEV;
 
 	pmcdev->map = (struct pmc_reg_map *)cpu_id->driver_data;
-	pmcdev->base_addr = PMC_BASE_ADDR_DEFAULT;
+
+	/*
+	 * Coffeelake has CPU ID of Kabylake and Cannonlake PCH. So here
+	 * Sunrisepoint PCH regmap can't be used. Use Cannonlake PCH regmap
+	 * in this case.
+	 */
+	if (!pci_dev_present(pmc_pci_ids))
+		pmcdev->map = &cnp_reg_map;
+
+	if (lpit_read_residency_count_address(&slp_s0_addr))
+		pmcdev->base_addr = PMC_BASE_ADDR_DEFAULT;
+	else
+		pmcdev->base_addr = slp_s0_addr - pmcdev->map->slp_s0_offset;
+
 	pmcdev->regbase = ioremap(pmcdev->base_addr,
 				  pmcdev->map->regmap_length);
 	if (!pmcdev->regbase)

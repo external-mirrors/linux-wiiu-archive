@@ -51,15 +51,23 @@ static unsigned int scpi_cpufreq_get_rate(unsigned int cpu)
 static int
 scpi_cpufreq_set_target(struct cpufreq_policy *policy, unsigned int index)
 {
+	unsigned long freq = policy->freq_table[index].frequency;
 	struct scpi_data *priv = policy->driver_data;
-	u64 rate = policy->freq_table[index].frequency * 1000;
+	u64 rate = freq * 1000;
 	int ret;
 
 	ret = clk_set_rate(priv->clk, rate);
-	if (!ret && (clk_get_rate(priv->clk) != rate))
-		ret = -EIO;
 
-	return ret;
+	if (ret)
+		return ret;
+
+	if (clk_get_rate(priv->clk) != rate)
+		return -EIO;
+
+	arch_set_freq_scale(policy->related_cpus, freq,
+			    policy->cpuinfo.max_freq);
+
+	return 0;
 }
 
 static int
@@ -145,6 +153,7 @@ static int scpi_cpufreq_init(struct cpufreq_policy *policy)
 	if (IS_ERR(priv->clk)) {
 		dev_err(cpu_dev, "%s: Failed to get clk for cpu: %d\n",
 			__func__, cpu_dev->id);
+		ret = PTR_ERR(priv->clk);
 		goto out_free_cpufreq_table;
 	}
 
@@ -197,11 +206,8 @@ static int scpi_cpufreq_exit(struct cpufreq_policy *policy)
 static void scpi_cpufreq_ready(struct cpufreq_policy *policy)
 {
 	struct scpi_data *priv = policy->driver_data;
-	struct thermal_cooling_device *cdev;
 
-	cdev = of_cpufreq_cooling_register(policy);
-	if (!IS_ERR(cdev))
-		priv->cdev = cdev;
+	priv->cdev = of_cpufreq_cooling_register(policy);
 }
 
 static struct cpufreq_driver scpi_cpufreq_driver = {

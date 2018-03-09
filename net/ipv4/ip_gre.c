@@ -261,6 +261,7 @@ static int erspan_rcv(struct sk_buff *skb, struct tnl_ptk_info *tpi,
 	struct ip_tunnel_net *itn;
 	struct ip_tunnel *tunnel;
 	const struct iphdr *iph;
+	struct erspan_md2 *md2;
 	int ver;
 	int len;
 
@@ -313,21 +314,14 @@ static int erspan_rcv(struct sk_buff *skb, struct tnl_ptk_info *tpi,
 				return PACKET_REJECT;
 
 			md = ip_tunnel_info_opts(&tun_dst->u.tun_info);
-			memcpy(md, pkt_md, sizeof(*md));
 			md->version = ver;
+			md2 = &md->u.md2;
+			memcpy(md2, pkt_md, ver == 1 ? ERSPAN_V1_MDSIZE :
+						       ERSPAN_V2_MDSIZE);
 
 			info = &tun_dst->u.tun_info;
 			info->key.tun_flags |= TUNNEL_ERSPAN_OPT;
 			info->options_len = sizeof(*md);
-		} else {
-			tunnel->erspan_ver = ver;
-			if (ver == 1) {
-				tunnel->index = ntohl(pkt_md->u.index);
-			} else {
-				tunnel->dir = pkt_md->u.md2.dir;
-				tunnel->hwid = get_hwid(&pkt_md->u.md2);
-			}
-
 		}
 
 		skb_reset_mac_header(skb);
@@ -976,9 +970,6 @@ static void __gre_tunnel_init(struct net_device *dev)
 
 	t_hlen = tunnel->hlen + sizeof(struct iphdr);
 
-	dev->needed_headroom	= LL_MAX_HEADER + t_hlen + 4;
-	dev->mtu		= ETH_DATA_LEN - t_hlen - 4;
-
 	dev->features		|= GRE_FEATURES;
 	dev->hw_features	|= GRE_FEATURES;
 
@@ -1296,8 +1287,6 @@ static int erspan_tunnel_init(struct net_device *dev)
 		       erspan_hdr_len(tunnel->erspan_ver);
 	t_hlen = tunnel->hlen + sizeof(struct iphdr);
 
-	dev->needed_headroom = LL_MAX_HEADER + t_hlen + 4;
-	dev->mtu = ETH_DATA_LEN - t_hlen - 4;
 	dev->features		|= GRE_FEATURES;
 	dev->hw_features	|= GRE_FEATURES;
 	dev->priv_flags		|= IFF_LIVE_ADDR_CHANGE;

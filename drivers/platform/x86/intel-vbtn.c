@@ -1,30 +1,22 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  *  Intel Virtual Button driver for Windows 8.1+
  *
  *  Copyright (C) 2016 AceLan Kao <acelan.kao@canonical.com>
  *  Copyright (C) 2016 Alex Hung <alex.hung@canonical.com>
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
  */
 
+#include <linux/acpi.h>
+#include <linux/dmi.h>
+#include <linux/input.h>
+#include <linux/input/sparse-keymap.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/init.h>
-#include <linux/input.h>
 #include <linux/platform_device.h>
-#include <linux/input/sparse-keymap.h>
-#include <linux/acpi.h>
 #include <linux/suspend.h>
-#include <acpi/acpi_bus.h>
+
+/* When NOT in tablet mode, VGBS returns with the flag 0x40 */
+#define TABLET_MODE_FLAG 0x40
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("AceLan Kao");
@@ -106,6 +98,33 @@ out_unknown:
 	dev_dbg(&device->dev, "unknown event index 0x%x\n", event);
 }
 
+static void detect_tablet_mode(struct platform_device *device)
+{
+	const char *chassis_type = dmi_get_system_info(DMI_CHASSIS_TYPE);
+	struct intel_vbtn_priv *priv = dev_get_drvdata(&device->dev);
+	acpi_handle handle = ACPI_HANDLE(&device->dev);
+	struct acpi_buffer vgbs_output = { ACPI_ALLOCATE_BUFFER, NULL };
+	union acpi_object *obj;
+	acpi_status status;
+	int m;
+
+	if (!(chassis_type && strcmp(chassis_type, "31") == 0))
+		goto out;
+
+	status = acpi_evaluate_object(handle, "VGBS", NULL, &vgbs_output);
+	if (ACPI_FAILURE(status))
+		goto out;
+
+	obj = vgbs_output.pointer;
+	if (!(obj && obj->type == ACPI_TYPE_INTEGER))
+		goto out;
+
+	m = !(obj->integer.value & TABLET_MODE_FLAG);
+	input_report_switch(priv->input_dev, SW_TABLET_MODE, m);
+out:
+	kfree(vgbs_output.pointer);
+}
+
 static int intel_vbtn_probe(struct platform_device *device)
 {
 	acpi_handle handle = ACPI_HANDLE(&device->dev);
@@ -130,6 +149,8 @@ static int intel_vbtn_probe(struct platform_device *device)
 		return err;
 	}
 
+	detect_tablet_mode(device);
+
 	status = acpi_install_notify_handler(handle,
 					     ACPI_DEVICE_NOTIFY,
 					     notify_handler,
@@ -145,6 +166,7 @@ static int intel_vbtn_remove(struct platform_device *device)
 {
 	acpi_handle handle = ACPI_HANDLE(&device->dev);
 
+	device_init_wakeup(&device->dev, false);
 	acpi_remove_notify_handler(handle, ACPI_DEVICE_NOTIFY, notify_handler);
 
 	/*

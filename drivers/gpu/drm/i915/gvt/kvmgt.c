@@ -651,6 +651,39 @@ static int intel_vgpu_bar_rw(struct intel_vgpu *vgpu, int bar, uint64_t off,
 	return ret;
 }
 
+static inline bool intel_vgpu_in_aperture(struct intel_vgpu *vgpu, uint64_t off)
+{
+	return off >= vgpu_aperture_offset(vgpu) &&
+	       off < vgpu_aperture_offset(vgpu) + vgpu_aperture_sz(vgpu);
+}
+
+static int intel_vgpu_aperture_rw(struct intel_vgpu *vgpu, uint64_t off,
+		void *buf, unsigned long count, bool is_write)
+{
+	void *aperture_va;
+
+	if (!intel_vgpu_in_aperture(vgpu, off) ||
+	    !intel_vgpu_in_aperture(vgpu, off + count)) {
+		gvt_vgpu_err("Invalid aperture offset %llu\n", off);
+		return -EINVAL;
+	}
+
+	aperture_va = io_mapping_map_wc(&vgpu->gvt->dev_priv->ggtt.iomap,
+					ALIGN_DOWN(off, PAGE_SIZE),
+					count + offset_in_page(off));
+	if (!aperture_va)
+		return -EIO;
+
+	if (is_write)
+		memcpy(aperture_va + offset_in_page(off), buf, count);
+	else
+		memcpy(buf, aperture_va + offset_in_page(off), count);
+
+	io_mapping_unmap(aperture_va);
+
+	return 0;
+}
+
 static ssize_t intel_vgpu_rw(struct mdev_device *mdev, char *buf,
 			size_t count, loff_t *ppos, bool is_write)
 {
@@ -679,8 +712,7 @@ static ssize_t intel_vgpu_rw(struct mdev_device *mdev, char *buf,
 					buf, count, is_write);
 		break;
 	case VFIO_PCI_BAR2_REGION_INDEX:
-		ret = intel_vgpu_bar_rw(vgpu, PCI_BASE_ADDRESS_2, pos,
-					buf, count, is_write);
+		ret = intel_vgpu_aperture_rw(vgpu, pos, buf, count, is_write);
 		break;
 	case VFIO_PCI_BAR1_REGION_INDEX:
 	case VFIO_PCI_BAR3_REGION_INDEX:
@@ -701,6 +733,25 @@ static ssize_t intel_vgpu_rw(struct mdev_device *mdev, char *buf,
 	return ret == 0 ? count : ret;
 }
 
+static bool gtt_entry(struct mdev_device *mdev, loff_t *ppos)
+{
+	struct intel_vgpu *vgpu = mdev_get_drvdata(mdev);
+	unsigned int index = VFIO_PCI_OFFSET_TO_INDEX(*ppos);
+	struct intel_gvt *gvt = vgpu->gvt;
+	int offset;
+
+	/* Only allow MMIO GGTT entry access */
+	if (index != PCI_BASE_ADDRESS_0)
+		return false;
+
+	offset = (u64)(*ppos & VFIO_PCI_OFFSET_MASK) -
+		intel_vgpu_get_bar_gpa(vgpu, PCI_BASE_ADDRESS_0);
+
+	return (offset >= gvt->device_info.gtt_start_offset &&
+		offset < gvt->device_info.gtt_start_offset + gvt_ggtt_sz(gvt)) ?
+			true : false;
+}
+
 static ssize_t intel_vgpu_read(struct mdev_device *mdev, char __user *buf,
 			size_t count, loff_t *ppos)
 {
@@ -710,7 +761,21 @@ static ssize_t intel_vgpu_read(struct mdev_device *mdev, char __user *buf,
 	while (count) {
 		size_t filled;
 
-		if (count >= 4 && !(*ppos % 4)) {
+		/* Only support GGTT entry 8 bytes read */
+		if (count >= 8 && !(*ppos % 8) &&
+			gtt_entry(mdev, ppos)) {
+			u64 val;
+
+			ret = intel_vgpu_rw(mdev, (char *)&val, sizeof(val),
+					ppos, false);
+			if (ret <= 0)
+				goto read_err;
+
+			if (copy_to_user(buf, &val, sizeof(val)))
+				goto read_err;
+
+			filled = 8;
+		} else if (count >= 4 && !(*ppos % 4)) {
 			u32 val;
 
 			ret = intel_vgpu_rw(mdev, (char *)&val, sizeof(val),
@@ -770,7 +835,21 @@ static ssize_t intel_vgpu_write(struct mdev_device *mdev,
 	while (count) {
 		size_t filled;
 
-		if (count >= 4 && !(*ppos % 4)) {
+		/* Only support GGTT entry 8 bytes write */
+		if (count >= 8 && !(*ppos % 8) &&
+			gtt_entry(mdev, ppos)) {
+			u64 val;
+
+			if (copy_from_user(&val, buf, sizeof(val)))
+				goto write_err;
+
+			ret = intel_vgpu_rw(mdev, (char *)&val, sizeof(val),
+					ppos, true);
+			if (ret <= 0)
+				goto write_err;
+
+			filled = 8;
+		} else if (count >= 4 && !(*ppos % 4)) {
 			u32 val;
 
 			if (copy_from_user(&val, buf, sizeof(val)))

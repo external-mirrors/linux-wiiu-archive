@@ -250,6 +250,7 @@ xfs_parseargs(
 				return -EINVAL;
 			break;
 		case Opt_logdev:
+			kfree(mp->m_logname);
 			mp->m_logname = match_strdup(args);
 			if (!mp->m_logname)
 				return -ENOMEM;
@@ -258,6 +259,7 @@ xfs_parseargs(
 			xfs_warn(mp, "%s option not allowed on this system", p);
 			return -EINVAL;
 		case Opt_rtdev:
+			kfree(mp->m_rtname);
 			mp->m_rtname = match_strdup(args);
 			if (!mp->m_rtname)
 				return -ENOMEM;
@@ -1666,9 +1668,12 @@ xfs_fs_fill_super(
 			"DAX unsupported by block device. Turning off DAX.");
 			mp->m_flags &= ~XFS_MOUNT_DAX;
 		}
-		if (xfs_sb_version_hasreflink(&mp->m_sb))
+		if (xfs_sb_version_hasreflink(&mp->m_sb)) {
 			xfs_alert(mp,
 		"DAX and reflink cannot be used together!");
+			error = -EINVAL;
+			goto out_filestream_unmount;
+		}
 	}
 
 	if (mp->m_flags & XFS_MOUNT_DISCARD) {
@@ -1681,15 +1686,18 @@ xfs_fs_fill_super(
 		}
 	}
 
-	if (xfs_sb_version_hasrmapbt(&mp->m_sb)) {
-		if (mp->m_sb.sb_rblocks) {
-			xfs_alert(mp,
-	"EXPERIMENTAL reverse mapping btree not compatible with realtime device!");
-			error = -EINVAL;
-			goto out_filestream_unmount;
-		}
+	if (xfs_sb_version_hasreflink(&mp->m_sb) && mp->m_sb.sb_rblocks) {
 		xfs_alert(mp,
-	"EXPERIMENTAL reverse mapping btree feature enabled. Use at your own risk!");
+	"reflink not compatible with realtime device!");
+		error = -EINVAL;
+		goto out_filestream_unmount;
+	}
+
+	if (xfs_sb_version_hasrmapbt(&mp->m_sb) && mp->m_sb.sb_rblocks) {
+		xfs_alert(mp,
+	"reverse mapping btree not compatible with realtime device!");
+		error = -EINVAL;
+		goto out_filestream_unmount;
 	}
 
 	error = xfs_mountfs(mp);

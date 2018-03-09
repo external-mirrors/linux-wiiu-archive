@@ -3905,7 +3905,7 @@ static void memcg_event_remove(struct work_struct *work)
 }
 
 /*
- * Gets called on POLLHUP on eventfd when user closes it.
+ * Gets called on EPOLLHUP on eventfd when user closes it.
  *
  * Called with wqh->lock held and interrupts disabled.
  */
@@ -3917,7 +3917,7 @@ static int memcg_event_wake(wait_queue_entry_t *wait, unsigned mode,
 	struct mem_cgroup *memcg = event->memcg;
 	__poll_t flags = key_to_poll(key);
 
-	if (flags & POLLHUP) {
+	if (flags & EPOLLHUP) {
 		/*
 		 * If the event has been detached at cgroup removal, we
 		 * can simply return knowing the other side will cleanup
@@ -6002,6 +6002,20 @@ void mem_cgroup_sk_alloc(struct sock *sk)
 
 	if (!mem_cgroup_sockets_enabled)
 		return;
+
+	/*
+	 * Socket cloning can throw us here with sk_memcg already
+	 * filled. It won't however, necessarily happen from
+	 * process context. So the test for root memcg given
+	 * the current task's memcg won't help us in this case.
+	 *
+	 * Respecting the original socket's memcg is a better
+	 * decision in this case.
+	 */
+	if (sk->sk_memcg) {
+		css_get(&sk->sk_memcg->css);
+		return;
+	}
 
 	rcu_read_lock();
 	memcg = mem_cgroup_from_task(current);

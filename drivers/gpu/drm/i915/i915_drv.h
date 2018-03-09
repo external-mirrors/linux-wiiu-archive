@@ -1349,6 +1349,7 @@ struct intel_vbt_data {
 		u32 size;
 		u8 *data;
 		const u8 *sequence[MIPI_SEQ_MAX];
+		u8 *deassert_seq; /* Used by fixup_mipi_sequences() */
 	} dsi;
 
 	int crt_ddc_pin;
@@ -3657,6 +3658,7 @@ extern void intel_i2c_reset(struct drm_i915_private *dev_priv);
 
 /* intel_bios.c */
 void intel_bios_init(struct drm_i915_private *dev_priv);
+void intel_bios_cleanup(struct drm_i915_private *dev_priv);
 bool intel_bios_is_valid_vbt(const void *buf, size_t size);
 bool intel_bios_is_tv_present(struct drm_i915_private *dev_priv);
 bool intel_bios_is_lvds_present(struct drm_i915_private *dev_priv, u8 *i2c_pin);
@@ -3717,7 +3719,11 @@ extern void intel_display_print_error_state(struct drm_i915_error_state_buf *e,
 					    struct intel_display_error_state *error);
 
 int sandybridge_pcode_read(struct drm_i915_private *dev_priv, u32 mbox, u32 *val);
-int sandybridge_pcode_write(struct drm_i915_private *dev_priv, u32 mbox, u32 val);
+int sandybridge_pcode_write_timeout(struct drm_i915_private *dev_priv, u32 mbox,
+				    u32 val, int timeout_us);
+#define sandybridge_pcode_write(dev_priv, mbox, val)	\
+	sandybridge_pcode_write_timeout(dev_priv, mbox, val, 500)
+
 int skl_pcode_request(struct drm_i915_private *dev_priv, u32 mbox, u32 request,
 		      u32 reply_mask, u32 reply, int timeout_base_ms);
 
