@@ -6,6 +6,8 @@
 linux-build:
   stage: build
   image: quarktheawesome/linux-wiiu-builder
+  variables:
+    GIT_DEPTH: "2"
   script:
   - make wiiu_defconfig $LINUXMK
   - make $LINUXMK
