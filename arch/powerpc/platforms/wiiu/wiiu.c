@@ -29,8 +29,8 @@
 #include <asm/time.h>
 #include <asm/udbg.h>
 
-#include "wiiu/latte-ahball-pic.h"
-#include "wiiu/espresso-pic.h"
+#include "pic/latte-ahball-pic.h"
+#include "pic/espresso-pic.h"
 
 phys_addr_t wiiu_hole_addrs[10];
 phys_addr_t wiiu_hole_sizes[10];
