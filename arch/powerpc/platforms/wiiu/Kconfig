@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config WIIU
+	bool "Nintendo Wii U"
+	depends on 6xx && USB_ARCH_HAS_HCD
+	select IRQ_DOMAIN_HIERARCHY
+	# TODO: do these contradict each other?
+	select NOT_COHERENT_CACHE
+	select HAVE_GENERIC_DMA_COHERENT
+
+	select GPIOLIB
+	select GPIOLIB_IRQCHIP
+	select USB_ARCH_HAS_EHCI if USB_SUPPORT
+	select USB_ARCH_HAS_OHCI if USB_SUPPORT
+
+	# debug bits
+	select IRQ_DOMAIN_DEBUG
+
+	help
+	  Select WIIU if configuring for a retail Nintendo Wii U.
