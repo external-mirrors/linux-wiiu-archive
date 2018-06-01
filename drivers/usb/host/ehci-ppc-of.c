@@ -31,7 +31,11 @@ static const struct hc_driver ehci_ppc_of_hc_driver = {
 	 * generic hardware linkage
 	 */
 	.irq			= ehci_irq,
+#ifdef CONFIG_WIIU
+	.flags			= HCD_MEMORY | HCD_USB2 | HCD_BH | HCD_NO_COHERENT_MEM,
+#else
 	.flags			= HCD_MEMORY | HCD_USB2 | HCD_BH,
+#endif
 
 	/*
 	 * basic lifecycle operations
@@ -90,6 +94,16 @@ ppc44x_enable_bmt(struct device_node *dn)
 	return 0;
 }
 
+/*
+ * wiiu: enable notification of EHCI interrupts
+ */
+#define WIIU_EHCI_CTL		0x00cc
+#define WIIU_EHCI_CTL_INTE	(0x1 << 15)
+static void
+wiiu_ehci_enbl_notif(struct usb_hcd *hcd)
+{
+	setbits32(hcd->regs + WIIU_EHCI_CTL, WIIU_EHCI_CTL_INTE);
+}
 
 static int ehci_hcd_ppc_of_probe(struct platform_device *op)
 {
@@ -130,6 +144,11 @@ static int ehci_hcd_ppc_of_probe(struct platform_device *op)
 	if (IS_ERR(hcd->regs)) {
 		rv = PTR_ERR(hcd->regs);
 		goto err_ioremap;
+	}
+
+	if (of_device_is_compatible(dn, "nintendo,ehci-wiiu")) {
+		wiiu_ehci_enbl_notif(hcd);
+		ehci_dbg(ehci, "Enabled ehci interrupts notification\n");
 	}
 
 	ehci = hcd_to_ehci(hcd);
