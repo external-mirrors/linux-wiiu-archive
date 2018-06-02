@@ -138,12 +138,20 @@
 			};
 		};
 
-		usb@0d040000 {
-			compatible = "nintendo,wiiu-usb-ehci",
-					"usb-ehci";
+		ehci_0: usb@0d040000 {
+			compatible = "nintendo,ehci-wiiu", "usb-ehci";
 			reg = <0x0d040000 0x100>;
 			interrupts = <4>;
 			interrupt-parent = <&pic1>;
+			big-endian-regs;
+		};
+
+		ehci_1: usb@0d120000 {
+			compatible = "nintendo,ehci-wiiu", "usb-ehci";
+			reg = <0x0d120000 0x100>;
+			interrupts = <16>;
+			interrupt-parent = <&pic1>;
+			big-endian-regs;
 		};
 
 		usb@0d050000 {
@@ -161,7 +169,7 @@
 			interrupts = <6>;
 			interrupt-parent = <&pic1>;
 		};
-		
+	
 		/* SDCard */
 		sd@0d070000 {
 			compatible = "nintendo,latte-sdhci";
