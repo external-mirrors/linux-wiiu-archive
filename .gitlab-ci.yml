@@ -15,7 +15,7 @@ linux-build:
   artifacts:
     <<: *artefacts-linux
     name: "${CI_JOB_NAME}-${CI_COMMIT_REF_NAME}"
-    expire_in: 2 weeks
+#    expire_in: 2 weeks
     
 master-deploy-deb:
   stage: deploy
