@@ -59,17 +59,18 @@ MODULE_PARM_DESC(leak_mmio, "oops");
 
 /*
  * In default fb mode we only support a single mode: 1280x720 32 bit true color.
- * Each pixel gets a word (32 bits) of memory, organized as RGBA8888
+ * Each pixel gets a word (32 bits) of memory, organized as RGBA8888...typically. If the below info is correct, WiiU is configured to use ARGB8888
  */
 
-// 16 bit
+// 32 bit
 #define BYTES_PER_PIXEL	4
 #define BITS_PER_PIXEL	(BYTES_PER_PIXEL * 8)
 
-// RGB565
+// RGBA8888
 #define OFFS_RED		16
 #define OFFS_GREEN		8
 #define OFFS_BLUE		0
+#define OFFS_ALPHA		24
 
 // Use 16 palettes
 #define MAX_PALETTES	16
@@ -94,10 +95,10 @@ static struct fb_fix_screeninfo wiiu_fb_fix = {
 static struct fb_var_screeninfo wiiu_fb_var = {
 	.bits_per_pixel =	BITS_PER_PIXEL,
 
-	.red =		{ OFFS_RED, 5, 0 },
-	.green =	{ OFFS_GREEN, 6, 0 },
-	.blue =		{ OFFS_BLUE, 5, 0 },
-	.transp =	{ 0, 0, 0 },
+	.red =		{ OFFS_RED, 8, 0 },
+	.green =	{ OFFS_GREEN, 8, 0 },
+	.blue =		{ OFFS_BLUE, 8, 0 },
+	.transp =	{ OFFS_ALPHA, 8, 0 },
 
 	.activate =	FB_ACTIVATE_NOW
 };
@@ -119,10 +120,10 @@ static int wiiufb_setcolreg(unsigned regno, unsigned red, unsigned green, unsign
 
 	// convert RGB to grayscale
 	if (info->var.grayscale)
-		red = green = blue = (19595 * red + 38470 * green + 7471 * blue) >> 16;
+		red = green = blue = (19595 * red + 38470 * green + 7471 * blue) >> 16; //still using RGB565 version, TODO update for ARGB8888 potentially?
 
 	// 16 bit RGB565
-	pal[regno] = (red & 0xf800) | ((green & 0xfc00) >> 5) | ((blue & 0xf800) >> 11);
+	pal[regno] = (transp & 0xff00) | ((red & 0xff00) >> 8) | ((green & 0xff00) >> 16) | ((blue & 0xf800) >> 24);
 	return 0;
 }
 
