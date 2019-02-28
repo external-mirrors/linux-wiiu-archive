@@ -61,7 +61,8 @@ While we started off developing with Gentoo, we swapped to Debian unstable (ever
 2. Download [this archive](https://mega.nz/#!la52GDSS!Y9TnuFmvbWRbFZww7LPvVsyh2egz4CTDyxC2R5r62r4), we'll call it "debian.tar.xz"
 3. Mount and cd into your new USB.
 4. Run `tar -xvpf <path/to/debian.tar.xz>`. The p is important, you could skip the v.
-5. Eject the drive and plug it into your Wii U. With any luck, it'll boot Debian! Log in with username root and password root.
+5. Run `sync` to ensure that the files have been written to your drive.
+6. Eject the drive and plug it into your Wii U. With any luck, it'll boot Debian! Log in with username root and password root.
 
 For Windows users, we've created an image as of 2018-02-28 that you can load with Win32DiskImager (or equivalent). For now, it's a fixed 2 GB image, but partition resizing might be implemented eventually. Instructions:
 
